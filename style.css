@@ -1,0 +1,24 @@
+body{
+    background-color: black;
+    color:#fff;
+    font-family: "Calibri", "System", monospace;
+    font-size:14px;
+    display: flex;
+    justify-content: center; 
+    padding-top: 2rem;
+}
+
+div#asteroids {
+    margin: 50px auto;
+    width: 640px;
+    height: 480px;
+    border: 1px solid #fff;
+    padding: 5px;
+    font-size:0.8rem;
+}
+
+div#asteroids > div {
+    font-family: "System", monospace;
+    font-size: 11px;
+    padding-bottom: 5px;
+}
