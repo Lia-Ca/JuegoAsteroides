@@ -11,7 +11,6 @@ const ACELERACION_UP = 1;
 const TIEMPO_MUERTE = 2000;      //2seg. para la explosion
 const TIEMPO_INVICIBLE = 1500;  //1.5seg.
 const VIDAS_JUGADOR = 3;
-
 const PUNTOS_1DISPARO = 1;
 const VIDA_EXTRA = 1000; 
 
@@ -35,59 +34,21 @@ Asteroids.DISPARO = 32; //PAAR EL ESPACIO
 
 var AsteroidsGame = function(home) {
     home.innerHTML = '';
-    this.info = Asteroids.infoPane(this, home);
-    this.playfield = Asteroids.playfield(this, home);
+    this.playfield = Asteroids.canvasJuego(this, home);
     this.player = Asteroids.player(this);
 
-    this.keyState = Asteroids.keyState(this);
+    this.keyState = Asteroids.EstadoDeTeclas(this);
     this.listen = Asteroids.listen(this);
 
-    this.asteroids = Asteroids.asteroids(this);
+    this.asteroids = Asteroids.gestionAsteroides(this);
     this.level = Asteroids.level(this);
 
     Asteroids.play(this);
     return this;
 }
 
-Asteroids.infoPane = function(game, home) {
-    var pane = document.createElement('div');
-    pane.innerHTML = 'JUEGO ASTEROIDES';
-
-    var vidas = document.createElement('span');
-    vidas.className = 'vidas';
-    vidas.innerHTML = 'VIDAS: ' + VIDAS_JUGADOR;
-
-    var puntuacion = document.createElement('span');
-    puntuacion.className = 'puntuacion';
-    puntuacion.innerHTML = 'PUNTUACION: 0';
-
-    var nivel = document.createElement('span');
-    nivel.className = 'nivel';
-    nivel.innerHTML = 'NIVEL: 1';
-
-    pane.appendChild(vidas);
-    pane.appendChild(puntuacion);
-    pane.appendChild(nivel);
-    home.appendChild(pane);
-
-    return {
-        setLives: function(game, l) {
-            vidas.innerHTML = 'VIDAS: ' + l;
-        },
-        setScore: function(game, s) {
-            puntuacion.innerHTML = 'PUNTUACION: ' + s;
-        },
-        setLevel: function(game, _level) {
-            nivel.innerHTML = 'NIVEL: ' + _level;
-        },
-        getPane: function() {
-            return pane;
-        }
-    }
-}
-
 //Creando canvas para dibujar el juego
-Asteroids.playfield = function(game, home) {
+Asteroids.canvasJuego = function(game, home) {
     var canvas = document.createElement('canvas');
     canvas.width = ANCHO;
     canvas.height = ALTO;
@@ -96,15 +57,12 @@ Asteroids.playfield = function(game, home) {
 }
 
 
-Asteroids.asteroids = function(game) {
+Asteroids.gestionAsteroides = function(game) {
     var asteroids = [];
 
     return {
         push: function(obj) {
             return asteroids.push(obj);
-        },
-        pop: function() {
-            return asteroids.pop();
         },
         splice: function(i, j) {
             return asteroids.splice(i, j);
@@ -135,7 +93,6 @@ Asteroids.player = function(game) {
         invincible = false,
         lastRez = null,   //momento donde revive la nave
         lives = VIDAS_JUGADOR,
-        score = 0,
         radius = 3,
         path = [
             [15, 0],
@@ -152,27 +109,11 @@ Asteroids.player = function(game) {
         },
         getDirection: function() { return direction; },
         getRadius: function() { return radius; },
-        getScore: function() { return score; },
-        addScore: function(pts) { score += pts; },
-        lowerScore: function(pts) {
-            score -= pts;
-            if (score < 0) score = 0;
-        },
         getLives: function() { return lives; },
         //+der,-izq
         rotate: function(rad) {
             if (!dead) {
                 direction += rad;
-            }
-        },
-        thrust: function(force) {  //CHEQUEAR SI LO ELIMINARE O NO -> CHECK?
-            if (!dead) {
-                velocity[0] += force * Math.cos(direction);
-                velocity[1] += force * Math.sin(direction);
-                if (this.getSpeed() > VELOCIDAD_MAX) {
-                    velocity[0] = VELOCIDAD_MAX * Math.cos(direction);
-                    velocity[1] = VELOCIDAD_MAX * Math.sin(direction);
-                }
             }
         },
         move: function() { Asteroids.move(position, velocity); },
@@ -183,13 +124,10 @@ Asteroids.player = function(game) {
                 const c = Math.floor(Math.cos(dt) * 16).toString(16);
                 color = `#${c}${c}${c}`;
             }
-            Asteroids.drawPath(ctx, position, direction, 1, path, color);
+            Asteroids.dibujoPanel(ctx, position, direction, 1, path, color);
         },
         isDead: function() { return dead; },
         isInvincible: function() { return invincible; },
-        extraLife: function(game) {
-            lives++;
-        },
         die: function(game) {
             if (!dead) {
                 dead = true;
@@ -217,18 +155,18 @@ Asteroids.player = function(game) {
                 }, TIEMPO_INVICIBLE);
             }
         },
+        //DISPARA BALA
         fire: function(game) {
             if (!dead) {
                 var _pos = [position[0], position[1]],
                     _dir = direction;
-                this.lowerScore(PUNTOS_1DISPARO);
-                return Asteroids.bullet(game, _pos, _dir);
+                return Asteroids.bala(game, _pos, _dir);
             }
         }
     }
 }
 
-Asteroids.bullet = function(game, _pos, _dir) {
+Asteroids.bala = function(game, _pos, _dir) {
     var position = [_pos[0], _pos[1]],
         velocity = [0, 0],
         direction = _dir,
@@ -249,12 +187,12 @@ Asteroids.bullet = function(game, _pos, _dir) {
         getAge: function() { return age; },
         birthday: function() { age++; },
         move: function() { Asteroids.move(position, velocity); },
-        draw: function(ctx) { Asteroids.drawPath(ctx, position, direction, 1, path); }
+        draw: function(ctx) { Asteroids.dibujoPanel(ctx, position, direction, 1, path); }
     }
 }
 
-//ESTADO DE TECLAS
-Asteroids.keyState = function(_) {
+//Registra y recuerda las teclas
+Asteroids.EstadoDeTeclas = function(_) {
     var state = {
         [Asteroids.IZQ]: false,
         [Asteroids.UP]: false,
@@ -331,7 +269,7 @@ Asteroids.asteroid = function(game, _gen) {
         getGeneration: function() { return generation; },
         move: function() { Asteroids.move(position, velocity); },
         draw: function(ctx) {
-            Asteroids.drawPath(ctx, position, direction, generation, path);
+            Asteroids.dibujoPanel(ctx, position, direction, generation, path);
         }
     }
 }
@@ -366,9 +304,9 @@ Asteroids.level = function(game) {
         }
     }
 }
-
-Asteroids.drawPath = function(ctx, position, direction, scale, path, color) {
+Asteroids.dibujoPanel = function(ctx, position, direction, scale, path, color) {
     if (!color) color = '#fff';
+    
     ctx.strokeStyle = color;
     ctx.setTransform(
         Math.cos(direction) * scale, Math.sin(direction) * scale,
@@ -383,8 +321,12 @@ Asteroids.drawPath = function(ctx, position, direction, scale, path, color) {
     }
     ctx.stroke();
     ctx.closePath();
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
     ctx.strokeStyle = '#fff';
 }
+
 
 Asteroids.move = function(position, velocity) {
     position[0] += velocity[0];
@@ -416,8 +358,6 @@ Asteroids.play = function(game) {
         last_fire_state = false,
         last_asteroid_count = 0;
 
-    var extra_lives = 0;
-
     game.pulse = setInterval(function() {
         var kill_asteroids = [],
             new_asteroids = [],
@@ -425,13 +365,6 @@ Asteroids.play = function(game) {
 
         ctx.save();
         ctx.clearRect(0, 0, ANCHO, ALTO);
-
-        var t_extra_lives = game.player.getScore() / VIDA_EXTRA;
-        t_extra_lives = Math.floor(t_extra_lives);
-        if (t_extra_lives > extra_lives) {
-            game.player.extraLife(game);
-        }
-        extra_lives = t_extra_lives;
 
         if (game.keyState.getState(Asteroids.UP)) game.player.thrust(ACELERACION_UP);
         if (game.keyState.getState(Asteroids.IZQ)) game.player.rotate(-VELOCIDAD_ROTACION);
@@ -490,7 +423,6 @@ Asteroids.play = function(game) {
                         new_asteroids.push(a);
                     }
                 }
-                game.player.addScore(PUNT_ASTEROID);
                 kill_asteroids.push(i);
                 continue;
             }
@@ -511,7 +443,7 @@ Asteroids.play = function(game) {
             game.asteroids.push(new_asteroids[o]);
         }
 
-        ctx.restore();
+        ctx.restore(); //restaura estado del canvas
 
         if (0 == game.asteroids.length && last_asteroid_count != 0) {
             setTimeout(function() {
@@ -521,14 +453,9 @@ Asteroids.play = function(game) {
 
         last_asteroid_count = game.asteroids.length;
 
-        game.info.setLives(game, game.player.getLives());
-        game.info.setScore(game, game.player.getScore());
-        game.info.setLevel(game, game.level.getLevel());
-
     }, FRAME_SEGUNDO);
 }
 
-// Load it up!
 window.onload = function() {
     new AsteroidsGame(document.getElementById('asteroids'));
 };
